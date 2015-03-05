@@ -17,12 +17,13 @@ pkg_search_module(SDL2 REQUIRED sdl2)
 include_directories(${SDL2_INCLUDE_DIRS})
 target_link_libraries(open_gl ${SDL2_LIBRARIES})
 
-### GLFW
-pkg_search_module(GLFW REQUIRED glfw3)
-include_directories(${GLFW_INCLUDE_DIRS})
-target_link_libraries(open_gl ${GLFW_LIBRARIES})
-
 ### GLEW
 find_package(GLEW REQUIRED)
 include_directories(${GLEW_INCLUDE_DIRS})
 target_link_libraries(open_gl ${GLEW_LIBRARIES})
+
+### Copy GLSL
+add_custom_command(TARGET open_gl PRE_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy_directory
+                       ${CMAKE_SOURCE_DIR}/shaders $<TARGET_FILE_DIR:open_gl>/shaders)
+
