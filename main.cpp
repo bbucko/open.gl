@@ -1,13 +1,36 @@
-#include <GL/glew.h>
 #include <SDL.h>
-#include <iostream>
-#include <fstream>
+#include <GL/glew.h>
+#include "include.h"
+#include "core/ShaderLoader.h"
 
-void checkShaderCompilation(GLuint vertexShader);
 
-std::string readShaderFromFile(char const *fileName);
+//SDL Context
+SDL_Window *window;
+SDL_GLContext context;
 
-GLuint compileShader(std::string &vertexSource, auto vertextType);
+void printError();
+
+void initOpenGLContext();
+
+void initWindow() {
+    LOG("Initializing OpenGL and SDL");
+    SDL_Init(SDL_INIT_VIDEO);
+    window = SDL_CreateWindow("OpenGL", 100, 100, 800, 600, SDL_WINDOW_OPENGL);
+}
+
+void initOpenGLContext() {
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+
+    context = SDL_GL_CreateContext(window);
+
+    LOG("Initialize GLEW");
+    glewExperimental = GL_TRUE;
+    glewInit();
+}
+
+ShaderLoader shaderLoader;
 
 int main() {
 //    createWindow(title, width, height);
@@ -23,35 +46,48 @@ int main() {
 //        presentGraphics();
 //    }
 
-    SDL_Init(SDL_INIT_VIDEO);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-    SDL_Window *window = SDL_CreateWindow("OpenGL", 100, 100, 800, 600, SDL_WINDOW_OPENGL);
-    SDL_GLContext context = SDL_GL_CreateContext(window);
+    initWindow();
+    initOpenGLContext();
 
-    glewExperimental = GL_TRUE;
-    glewInit();
+    LOG("Create Vertex Array Object");
+    GLuint vao;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
 
-    float vertices[] = {
-            0.0f, 0.5f, // Vertex 1 (X, Y)
-            0.5f, -0.5f, // Vertex 2 (X, Y)
-            -0.5f, -0.5f  // Vertex 3 (X, Y)
-    };
-
+    LOG("Create a Vertex Buffer Object and copy the vertex data to it");
     GLuint vbo;
     glGenBuffers(1, &vbo); // Generate 1 buffer
+
+    GLfloat vertices[] = {
+            0.0f, 0.5f, 1.0f, 0.0f, 0.0f, // Vertex 1: Red
+            0.5f, -0.5f, 0.0f, 1.0f, 0.0f, // Vertex 2: Green
+            -0.5f, -0.5f, 0.0f, 0.0f, 1.0f  // Vertex 3: Blue
+    };
+
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    std::string vertexSource = readShaderFromFile("shaders/simple.vert");
-    std::string fragmentSource = readShaderFromFile("shaders/simple.frag");
 
-    GLuint vertexShader = compileShader(vertexSource, GL_VERTEX_SHADER);
-    checkShaderCompilation(vertexShader);
+    LOG("Link the vertex and fragment shader into a shader program");
+    GLuint shaderProgram = shaderLoader.createProgram("shaders/simple.vert", "shaders/simple.frag");
+    glUseProgram(shaderProgram);
+    glBindFragDataLocation(shaderProgram, 0, "outColor");
 
-    GLuint fragmentShader = compileShader(fragmentSource, GL_FRAGMENT_SHADER);
-    checkShaderCompilation(fragmentShader);
+    LOG("Specify the layout of the vertex data");
+    GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
+    glEnableVertexAttribArray(posAttrib);
+    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), 0);
+
+    GLint colAttrib = glGetAttribLocation(shaderProgram, "color");
+    glEnableVertexAttribArray(colAttrib);
+    glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *) (2 * sizeof(float)));
+
+
+    LOG("Specify uniforms");
+    GLint uniColor = glGetUniformLocation(shaderProgram, "triangleColor");
+    glUniform3f(uniColor, 1.0f, 0.0f, 0.0f);
+
+    printError();
 
     SDL_Event windowEvent;
     while (true) {
@@ -59,35 +95,34 @@ int main() {
             if (windowEvent.type == SDL_QUIT) break;
         }
 
+        // Set the screen to black
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // Draw a triangle from the 3 vertices
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        printError();
+
         SDL_GL_SwapWindow(window);
     }
+
+    glDeleteProgram(shaderProgram);
+//    glDeleteShader(fragmentShader);
+//    glDeleteShader(vertexShader);
+
+    glDeleteBuffers(1, &vbo);
+
+    glDeleteVertexArrays(1, &vao);
 
 
     SDL_GL_DeleteContext(context);
     SDL_Quit();
-
-    return 0;
 }
 
-GLuint compileShader(std::string &vertexSource, auto vertextType) {
-    GLuint vertexShader = glCreateShader(vertextType);
-    glShaderSource(vertexShader, 1, (const GLchar **) &vertexSource, NULL);
-    glCompileShader(vertexShader);
-    return vertexShader;
-}
-
-std::string readShaderFromFile(char const *fileName) {
-    std::ifstream simpleFrag(fileName);
-    std::string vertexSource((std::istreambuf_iterator<char>(simpleFrag)), std::istreambuf_iterator<char>());
-    return vertexSource;
-}
-
-void checkShaderCompilation(GLuint vertexShader) {
-    GLint status;
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &status);
-    if (status != GL_TRUE) {
-        char buffer[512];
-        glGetShaderInfoLog(vertexShader, 512, NULL, buffer);
-        std::cout << buffer << std::endl;
+void printError() {
+    GLenum err;
+    while ((err = glGetError()) != GL_NO_ERROR) {
+        ERROR("OpenGL error: %i", err);
     }
 }
