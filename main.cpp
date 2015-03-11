@@ -59,13 +59,26 @@ int main() {
     glGenBuffers(1, &vbo); // Generate 1 buffer
 
     GLfloat vertices[] = {
-            0.0f, 0.5f, 1.0f, 0.0f, 0.0f, // Vertex 1: Red
-            0.5f, -0.5f, 0.0f, 1.0f, 0.0f, // Vertex 2: Green
-            -0.5f, -0.5f, 0.0f, 0.0f, 1.0f  // Vertex 3: Blue
+            -0.5f, 0.5f, 1.0f, 0.0f, 0.0f, // Top-left
+            0.5f, 0.5f, 0.0f, 1.0f, 0.0f, // Top-right
+            0.5f, -0.5f, 0.0f, 0.0f, 1.0f, // Bottom-right
+            -0.5f, -0.5f, 1.0f, 1.0f, 1.0f  // Bottom-left
     };
+
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    LOG("Create a Element Buffer Object and set the order");
+    GLuint ebo;
+    glGenBuffers(1, &ebo);
+    GLuint elements[] = {
+            0, 1, 2,
+//            0, 1, 2,
+            2, 3, 0
+    };
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW);
 
 
     LOG("Link the vertex and fragment shader into a shader program");
@@ -100,7 +113,7 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Draw a triangle from the 3 vertices
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         printError();
 
@@ -112,7 +125,7 @@ int main() {
 //    glDeleteShader(vertexShader);
 
     glDeleteBuffers(1, &vbo);
-
+    glDeleteBuffers(1, &ebo);
     glDeleteVertexArrays(1, &vao);
 
 
