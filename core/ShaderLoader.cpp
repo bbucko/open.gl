@@ -1,14 +1,34 @@
 #include <GL/glew.h>
 #include "ShaderLoader.h"
 
+
+std::string readFile(const char *filePath) {
+    std::string content;
+    std::ifstream fileStream(filePath, std::ios::in);
+
+    if(!fileStream.is_open()) {
+        std::cerr << "Could not read file " << filePath << ". File does not exist." << std::endl;
+        return "";
+    }
+
+    std::string line = "";
+    while(!fileStream.eof()) {
+        std::getline(fileStream, line);
+        content.append(line + "\n");
+    }
+
+    fileStream.close();
+    return content;
+}
+
 GLuint ShaderLoader::loadShader(GLenum shaderTye, char const *fileName) {
-    std::ifstream shaderSource(fileName);
-    std::string vertexSource((std::istreambuf_iterator<char>(shaderSource)), std::istreambuf_iterator<char>());
+    std::string shaderStr = readFile(fileName);
+    const char *shaderSrc = shaderStr.c_str();
 
     GLuint shader = glCreateShader(shaderTye);
-
     //Shader, count, source, length
-    glShaderSource(shader, 1, (const GLchar **) &vertexSource, NULL);
+
+    glShaderSource(shader, 1, &shaderSrc, NULL);
     glCompileShader(shader);
     checkCompilationStatus(shader);
 

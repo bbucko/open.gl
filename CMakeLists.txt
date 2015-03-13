@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8.4)
 project(open_gl)
 find_package(PkgConfig REQUIRED)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Wextra -DDEBUG")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra -DDEBUG")
 
 set(SOURCE_FILES core/ShaderLoader.cpp main.cpp)
 add_executable(open_gl ${SOURCE_FILES})
